@@ -1,0 +1,14 @@
+[package]
+title = "Galbot S1 MobilityGen"
+version = "0.1.0"
+description = "Galbot S1 (swerve chassis + dual arms) integration for Isaac Sim MobilityGen"
+category = "robotics"
+
+[dependencies]
+"isaacsim.replicator.mobility_gen" = {}
+"isaacsim.replicator.mobility_gen.examples" = {}
+# 注意: 不依赖 mobility_gen.ui —— 由 extension.py 的 on_startup 在完成
+# ROBOTS 注册之后程序化启用它, 否则 UI 先建下拉框会看不到 GalbotS1Robot.
+
+[[python.module]]
+name = "galbot.mobility_gen"

@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+
+# Runtime products. Keep only the accepted nav preview images visible to source
+# control; ignore datasets, smoke tests, and temporary preview variants.
+outputs/*
+!outputs/arm_pose_preview/
+outputs/arm_pose_preview/*
+!outputs/arm_pose_preview/nav_left_wrist.png
+!outputs/arm_pose_preview/nav_right_wrist.png
+
+# Editor and OS noise
+.idea/
+.vscode/
+.DS_Store

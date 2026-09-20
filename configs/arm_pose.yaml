@@ -1,0 +1,14 @@
+zero: {}
+nav:
+  # 左右严格镜像的紧凑导航姿态。腕部约位于 base 前方 0.42 m、
+  # 两侧 +/-0.38 m；相机光轴由 wrist_cameras.yaml 单独对准。
+  left_arm_joint1: 0.006
+  left_arm_joint2: -0.288
+  left_arm_joint3: 0.096
+  left_arm_joint4: -2.341
+  right_arm_joint1: -0.006
+  right_arm_joint2: 0.288
+  right_arm_joint3: -0.096
+  right_arm_joint4: 2.341
+  torso_lift_joint1: 0.3
+default_pose: nav

@@ -1,0 +1,36 @@
+# Galbot S1 腕部相机配置（调试参数，正式采集前用 GalbotSDK 实机标定替换 null 项）
+# fx/fy/cx/cy: null = 使用 Isaac Sim 相机默认内参并在运行时读取实际 K
+# camera_link_from_opencv_optical: null = 默认 diag(1,-1,-1) 手性变换
+
+left_wrist:
+  width: 640
+  height: 480
+  fx: null
+  fy: null
+  cx: null
+  cy: null
+  near_m: 0.1
+  far_m: 10.0
+  depth_scale: 1000.0
+  camera_link_from_opencv_optical: null
+
+right_wrist:
+  width: 640
+  height: 480
+  fx: null
+  fy: null
+  cx: null
+  cy: null
+  near_m: 0.1
+  far_m: 10.0
+  depth_scale: 1000.0
+  camera_link_from_opencv_optical: null
+
+# 元数据标记: 区分示例标定与真实标定
+calibration_source: placeholder
+
+# 相机固定在腕部 link 下，但导航视线以机器人 base 为基准自动对准。
+# 负 pitch = 向下看；yaw 正 = 向左。roll 固定为 0，避免左右画面歪斜。
+navigation_view:
+  pitch_deg: -10.0
+  yaw_deg: 0.0
