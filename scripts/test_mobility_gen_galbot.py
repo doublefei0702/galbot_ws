@@ -11,6 +11,7 @@
 """
 import asyncio
 import os
+import shutil
 import sys
 
 from isaacsim import SimulationApp
@@ -39,6 +40,8 @@ def main():
     # 2) 打开仓库 + 构建 world/机器人/场景 (复刻 UI build 流程)
     from isaacsim.core.utils.stage import open_stage
     from isaacsim.replicator.mobility_gen.impl.occupancy_map import OccupancyMap
+    from isaacsim.replicator.mobility_gen.impl.config import Config
+    from isaacsim.replicator.mobility_gen.impl.reader import MobilityGenReader
     from isaacsim.replicator.mobility_gen.impl.utils.global_utils import get_world, new_world
     from isaacsim.replicator.mobility_gen.impl.writer import MobilityGenWriter
     from galbot.mobility_gen.robots import GalbotS1Robot
@@ -60,10 +63,28 @@ def main():
     scenario.reset()
     print(f"3. 场景已构建, 初始位姿 {robot.get_pose_2d()}")
 
-    # 4) 运行 + 录制
-    rec_dir = os.path.join(os.path.expanduser("~/MobilityGenData"), "recordings", "galbot_s1_headless_test")
-    writer = MobilityGenWriter(rec_dir)
+    # 4) 先让双臂收敛并完成腕部相机定向。预热帧不进入正式录制。
     dt = world.get_physics_dt()
+    for _ in range(400):
+        robot.write_action(dt)
+        world.step(render=False)
+    scenario.reset()
+
+    # 5) 初始化一个完整的 MobilityGen recording。replay_directory.py 除状态帧外
+    # 还要求 config.json、stage.usd 和 occupancy_map/map.yaml。
+    rec_dir = os.path.join(os.path.expanduser("~/MobilityGenData"), "recordings", "galbot_s1_headless_test")
+    if os.path.isdir(rec_dir):
+        shutil.rmtree(rec_dir)
+    writer = MobilityGenWriter(rec_dir)
+    writer.write_config(Config(
+        scenario_type="RandomPathFollowingScenario",
+        robot_type="GalbotS1Robot",
+        scene_usd=WAREHOUSE,
+    ))
+    writer.write_occupancy_map(omap)
+    writer.copy_stage(WAREHOUSE)
+
+    # 6) 运行 + 录制
     poses = []
     resets = 0
     for i in range(N_STEPS):
@@ -85,6 +106,12 @@ def main():
     print(f"4. 完成 {N_STEPS} 步: 累计里程 {travel:.2f}m, 场景重置 {resets} 次, 轨迹点 {len(poses)}")
     print(f"   录制目录: {rec_dir}")
     assert travel > 1.0, "机器人没有实际移动!"
+    reader = MobilityGenReader(rec_dir)
+    assert len(reader) == len(poses), "MobilityGen recording 状态帧数量不一致"
+    reader.read_config()
+    reader.read_occupancy_map()
+    for required in ("stage.usd", "config.json", os.path.join("occupancy_map", "map.yaml")):
+        assert os.path.isfile(os.path.join(rec_dir, required)), f"录制初始化文件缺失: {required}"
     print("\n集成验证通过 ✔")
     simulation_app.close()
 

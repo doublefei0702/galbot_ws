@@ -237,10 +237,19 @@ class GalbotS1Robot(MobilityGenRobot):
             child.update_state()
 
     def write_replay_data(self):
+        orientation = np.asarray(self.orientation.get_value())
         self.articulation_view.set_world_poses(
-            positions=np.asarray(self.position.get_value())[None, :])
+            positions=np.asarray(self.position.get_value())[None, :],
+            orientations=orientation[None, :])
         self.articulation_view.set_joint_positions(
             np.asarray(self.joint_positions.get_value())[None, :])
+        # Camera 的动态定向不属于关节状态，必须在 replay 中显式恢复；否则图像
+        # 使用默认 USD Camera 朝向，而 common state 中仍是录制时的相机位姿。
+        aim_q = aimed_world_camera_quat(
+            orientation, WRIST_VIEW_PITCH_DEG, WRIST_VIEW_YAW_DEG)
+        for camera in self._wrist_pose_handles.values():
+            camera.set_world_pose(orientation=aim_q, camera_axes="world")
+        self._wrist_aimed = True
 
     def set_pose_2d(self, pose: Pose2d):
         self.articulation_view.set_velocities(np.zeros((1, 6)))

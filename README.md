@@ -300,6 +300,22 @@ Isaac Sim 并重新 Build；旧 stage 实例不会被热更新自动删除。
 
 ### 6.3 Replay 渲染
 
+先运行 6.1 的无头集成测试生成完整录制，并确认初始化文件存在：
+
+```bash
+test -f /root/MobilityGenData/recordings/galbot_s1_headless_test/config.json
+test -f /root/MobilityGenData/recordings/galbot_s1_headless_test/stage.usd
+test -f /root/MobilityGenData/recordings/galbot_s1_headless_test/occupancy_map/map.yaml
+```
+
+上述命令均无输出且退出码为 0 后，再执行：
+
+`replay_directory.py` 的 `--input` 必须指向“包含一个或多个录制目录的父目录”，不能
+直接指向某一次录制。否则脚本会把该录制内的 `occupancy_map/`、`state/` 等误认为独立
+录制，并尝试读取 `occupancy_map/config.json`。下面使用软链接建立临时输入集合：它不会
+复制数据，删除链接也不会删除原始录制，并且可以只选择需要 replay 的记录。也可以直接
+传入 `/root/MobilityGenData/recordings`，但这样会处理其中的全部录制，包括可能残缺的目录。
+
 ```bash
 mkdir -p /tmp/replays_in
 ln -sfn /root/MobilityGenData/recordings/galbot_s1_headless_test \
@@ -316,6 +332,21 @@ cd /root/isaacsim
 ```
 
 结果位于 `/root/MobilityGenData/replays/galbot_s1_headless_test/`，只包含双腕相机通道。
+
+Galbot 扩展会覆盖 MobilityGen UI 的临时 stage 保存函数，将场景依赖保存为绝对路径。
+这是必要的：官方实现先相对于 `/tmp` 重写依赖，再把 stage 复制到录制目录，可能产生
+`../../root/...`；通过其他目录或软链接 replay 时，该路径会错误解析为 `/tmp/root/...`，
+最终表现为仓库场景缺失、RGB 全黑。修改扩展后必须完全重启 Isaac Sim，已创建的旧录制
+不会被自动修复。
+
+旧录制可保留备份后，用 `config.json` 中的原始 `scene_usd` 替换损坏的 stage。例如：
+
+```bash
+REC=/root/MobilityGenData/recordings/2026-09-20_17-04-02-645520
+SCENE=/root/gpufree-data/IsaacSim/IsaacSim/Galbot_test/warehouse_with_forklifts_edit.usd
+cp -p "$REC/stage.usd" "$REC/stage.usd.broken.bak"
+cp "$SCENE" "$REC/stage.usd"
+```
 
 ## 7. 配置说明
 
