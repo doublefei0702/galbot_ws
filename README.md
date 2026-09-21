@@ -25,6 +25,7 @@
 | 双腕相机 | 640×480 RGB-D，臂姿决定位置，视线相对 base 对准 |
 | 独立同步采集 | RGB、深度、实际渲染内参、逐帧 OpenCV 位姿 |
 | MobilityGen | 机器人注册、键盘遥控、随机路径、录制和 replay |
+| 外部控制接口 | `[v, wz]` 速度指令 + 2D 位姿反馈，对接导航栈见 [docs/navigation.md](docs/navigation.md) |
 
 ## 环境要求
 
@@ -68,9 +69,12 @@ galbot_ws/
 不要直接编辑 `third_party/galbot_s1_description`。需要改变物理结构时修改
 `scripts/make_sim_variant.py`，然后重建 `stages/galbot_s1_sim_src`。
 
-## 快速开始
+## 快速开始：在自己的场景中跑起来
 
-按顺序执行；每一步的细节和参数见 [docs/workflows.md](docs/workflows.md)。
+目标是在一套新的 Isaac Sim 环境中，用你自己的场景驱动 Galbot S1。
+扩展通过 `--ext-folder` 加载，不需要安装进 Isaac Sim 目录。完整操作细节见
+[docs/workflows.md](docs/workflows.md)，与导航系统对接见
+[docs/navigation.md](docs/navigation.md)。
 
 ```bash
 cd "$GALBOT_WORKSPACE"
@@ -78,39 +82,44 @@ cd "$GALBOT_WORKSPACE"
 # 1. 初始化子模块（首次克隆后）
 git submodule update --init --recursive
 
-# 2. 离线单元测试（相机轴约定、底盘运动学）
-python3 tests/test_camera_pose.py
-python3 tests/test_swerve_controller.py
-
-# 3. 生成仿真资产与场景（官方资产更新或派生目录缺失时才需要）
-python3 scripts/inspect_galbot_s1.py
+# 2. 生成可移动仿真资产
 python3 scripts/make_sim_variant.py
-python3 scripts/build_debug_stage.py
+
+# 3. 把采集场景指向你自己的仓库 USD：
+#    修改 scripts/build_capture_stage.py 顶部的 WAREHOUSE 常量后执行
+#    （可选参数：出生位姿 x y yaw_deg）
 python3 scripts/build_capture_stage.py
+```
 
-# 4. 底盘物理验收
-ISP scripts/test_galbot_motion.py
+然后在 GUI 中用自己的场景验证移动：
 
-# 5. 预览并调整双腕导航视野
-ISP scripts/preview_arm_pose.py
+```bash
+cd "$ISAAC_SIM"
+./isaac-sim.sh \
+  --ext-folder "$GALBOT_WORKSPACE/exts" \
+  --enable galbot.mobility_gen
+```
 
-# 6. 相机独立验收（RGB-D / 内参 / 位姿）
-ISP scripts/test_wrist_cameras.py
+打开你的场景 USD → MobilityGen 面板 → 选择场景 USD、占据图 `map.yaml`、
+Robot 选 `GalbotS1Robot`、Scenario 选 `KeyboardTeleoperation` → 点击
+**Build**（等待约 2 秒双臂和相机视线稳定）→ `W/S` 前后移动、`A/D` 原地转向。
 
-# 7. 行驶中同步采集导航数据
-ISP scripts/capture_wrist_dataset.py --motion straight --frames 40 --speed 0.25
+无头模式验证随机路径导航（先把 `scripts/test_mobility_gen_galbot.py` 中的
+`WAREHOUSE`/`OMAP` 常量指向你的场景与占据图）：
 
-# 8. MobilityGen 无头集成测试（随机路径 + 录制）
+```bash
 MG_STEPS=2000 ISP scripts/test_mobility_gen_galbot.py \
   --enable isaacsim.replicator.mobility_gen.examples
 ```
 
-GUI 键盘遥控和 replay 渲染见 [docs/workflows.md](docs/workflows.md#mobilitygen)。
+底盘、相机等逐级验收脚本和数据采集属于进阶流程，不是运行前置条件，
+需要时见 [docs/workflows.md](docs/workflows.md#2-逐级验收可选)。
 
 ## 文档索引
 
 | 文档 | 内容 |
 |---|---|
+| [docs/navigation.md](docs/navigation.md) | 与导航栈对接：cmd_vel 接口、里程计反馈、目标点导航两条路径 |
 | [docs/architecture.md](docs/architecture.md) | 实现思路：资产派生、swerve 运动学、相机定向、扩展机制 |
 | [docs/workflows.md](docs/workflows.md) | 操作指南：资产准备、逐级验收、数据采集、MobilityGen、replay |
 | [docs/data_format.md](docs/data_format.md) | 输出数据格式与坐标约定 |

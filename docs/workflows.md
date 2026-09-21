@@ -31,7 +31,11 @@ python3 scripts/build_capture_stage.py 2.0 -8.0 90
 `build_capture_stage.py` 引用的仓库 USD 由脚本内 `WAREHOUSE` 常量决定，
 替换场景的方法见 [configuration.md](configuration.md#场景与路径自定义)。
 
-## 2. 逐级验收
+## 2. 逐级验收（可选）
+
+本章脚本用于首次接入、修改代码后或排查问题时的分级验证，**不是运行前置
+条件**——直接跑自己的场景见 [README 快速开始](../README.md#快速开始在自己的场景中跑起来)。
+建议在改动底盘、相机或扩展代码后按顺序执行一遍。
 
 ### 2.1 离线单元测试
 
@@ -121,7 +125,8 @@ cd "$ISAAC_SIM"
   --enable galbot.mobility_gen
 ```
 
-1. 打开仓库场景 USD（脚本内 `WAREHOUSE` 常量指向的场景）；
+1. 打开仓库场景 USD（自己的场景见
+   [configuration.md](configuration.md#场景与路径自定义)）；
 2. 打开 MobilityGen 面板；
 3. Scene USD 选择仓库 USD，Occupancy Map 选择对应 `map.yaml`；
 4. Robot 选择 `GalbotS1Robot`，Scenario 选择 `KeyboardTeleoperation`；
