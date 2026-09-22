@@ -74,6 +74,8 @@ def main():
         path = f"{link}/sensors/rgbd_camera"
         cam = Camera(prim_path=path, resolution=(W, H))
         cam.initialize()
+        _pose_utils.set_camera_horizontal_fov(
+            cam, view_cfg.get("horizontal_fov_deg", 70.0))
         cam.add_distance_to_image_plane_to_frame()
         cameras[tag] = cam
         print(f"已创建 {tag}: {path}")

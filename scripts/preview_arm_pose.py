@@ -48,7 +48,8 @@ def main():
     parser.add_argument("--poses", default=None, help="arm_pose.yaml 姿态名，逗号分隔；默认 default_pose")
     parser.add_argument("--pitch", type=float, default=None, help="视线俯角，负值向下；默认读取配置")
     parser.add_argument("--yaw", type=float, default=None, help="视线偏航，正值向左；默认读取配置")
-    parser.add_argument("--save-view", action="store_true", help="把 pitch/yaw 保存到 wrist_cameras.yaml")
+    parser.add_argument("--fov", type=float, default=None, help="水平视场角（度）；越大看得越广")
+    parser.add_argument("--save-view", action="store_true", help="把 pitch/yaw/fov 保存到 wrist_cameras.yaml")
     parser.add_argument("--stage", default=os.path.join(WS, "stages", "galbot_warehouse_capture.usd"))
     parser.add_argument("--out", default=os.path.join(WS, "outputs", "arm_pose_preview"))
     args, _ = parser.parse_known_args()
@@ -62,11 +63,12 @@ def main():
     view = camera_cfg.setdefault("navigation_view", {})
     pitch = float(args.pitch if args.pitch is not None else view.get("pitch_deg", -10.0))
     yaw = float(args.yaw if args.yaw is not None else view.get("yaw_deg", 0.0))
+    fov = float(args.fov if args.fov is not None else view.get("horizontal_fov_deg", 70.0))
     if args.save_view:
-        view.update({"pitch_deg": pitch, "yaw_deg": yaw})
+        view.update({"pitch_deg": pitch, "yaw_deg": yaw, "horizontal_fov_deg": fov})
         with open(camera_path, "w") as stream:
             yaml.safe_dump(camera_cfg, stream, allow_unicode=True, sort_keys=False)
-        print(f"已保存导航视线: pitch={pitch:+.1f}°, yaw={yaw:+.1f}°")
+        print(f"已保存导航视线: pitch={pitch:+.1f}°, yaw={yaw:+.1f}°, HFOV={fov:.1f}°")
 
     pose_names = (args.poses or arm_cfg.get("default_pose", "nav")).split(",")
     poses = {name: arm_cfg[name] for name in pose_names}
@@ -88,6 +90,7 @@ def main():
         camera = Camera(
             prim_path=f"/World/robot/{rel_path}/sensors/rgbd_camera", resolution=(W, H))
         camera.initialize()
+        pose_utils.set_camera_horizontal_fov(camera, fov)
         camera.add_distance_to_image_plane_to_frame()
         cameras[side] = camera
 
@@ -116,7 +119,7 @@ def main():
             p50 = float(np.percentile(valid, 50)) if valid.size else float("nan")
             output = os.path.join(args.out, f"{pose_name}_{side}_wrist.png")
             Image.fromarray(rgb).save(output)
-            print(f"[{pose_name}/{side}] z={position[2]:.2f}m pitch={measured_pitch:+.1f}° "
+            print(f"[{pose_name}/{side}] z={position[2]:.2f}m pitch={measured_pitch:+.1f}° HFOV={fov:.1f}° "
                   f"forward={forward.round(3)} depth_p50={p50:.2f}m rgb_mean={rgb.mean():.0f}")
 
     print(f"预览图已保存到 {args.out}")

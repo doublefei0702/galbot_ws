@@ -15,8 +15,9 @@
 
 ### configs/wrist_cameras.yaml
 
-- `navigation_view`：导航视线的 pitch/yaw（相对机器人 base），
-  负 pitch 向下、正 yaw 向左、roll 固定为 0；
+- `navigation_view`：导航视线参数（相对机器人 base）。`pitch_deg` 负值向下，
+  `yaw_deg` 正值向左，roll 固定为 0；`horizontal_fov_deg` 是水平视场角，
+  值越大视野越广、近处内容越多。默认 `70°`，通常建议在 `60°~80°` 调整；
 - `left_wrist`/`right_wrist` 的 `fx/fy/cx/cy: null`：内参由 Isaac Sim 渲染
   相机实时读取，实际值记录在输出的 `camera_info.json`；
 - `width/height`、`near_m/far_m`、`depth_scale`：为实机/统一相机工厂预留，
@@ -27,6 +28,16 @@
 
 配置的读取时机：独立脚本每次启动重新读取 YAML；MobilityGen 扩展在模块
 加载时读取，修改后需完全重启 Isaac Sim。
+
+可先无头预览不同视场角；确认后加 `--save-view` 写回配置：
+
+```bash
+ISP scripts/preview_arm_pose.py --fov 75
+ISP scripts/preview_arm_pose.py --fov 75 --save-view
+```
+
+视场角只改变镜头宽窄，不改变相机位置和朝向。若加宽后仍希望看到更多脚下，
+再把 `pitch_deg` 从 `-10` 调到 `-15` 左右。
 
 ## 场景与路径自定义
 

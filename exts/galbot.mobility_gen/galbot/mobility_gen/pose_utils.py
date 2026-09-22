@@ -78,6 +78,26 @@ def camera_forward_pitch(quat_wxyz: np.ndarray) -> tuple[np.ndarray, float]:
     return forward, float(pitch)
 
 
+def focal_length_for_horizontal_fov(horizontal_aperture: float, horizontal_fov_deg: float) -> float:
+    """Compute focal length from sensor width and desired horizontal field of view.
+
+    Both the aperture and returned focal length use the same units (Isaac Sim's
+    ``Camera`` API reports both in stage units).
+    """
+    fov = float(horizontal_fov_deg)
+    if not 1.0 < fov < 179.0:
+        raise ValueError(f"horizontal_fov_deg must be between 1 and 179, got {fov}")
+    return float(horizontal_aperture) / (2.0 * np.tan(np.deg2rad(fov) / 2.0))
+
+
+def set_camera_horizontal_fov(camera, horizontal_fov_deg: float) -> float:
+    """Set an Isaac Sim ``Camera`` horizontal FOV and return its focal length."""
+    focal_length = focal_length_for_horizontal_fov(
+        camera.get_horizontal_aperture(), horizontal_fov_deg)
+    camera.set_focal_length(focal_length)
+    return focal_length
+
+
 def pose_matrix(position: np.ndarray, quat_wxyz: np.ndarray) -> np.ndarray:
     """Build a homogeneous pose matrix from position and scalar-first quat."""
     transform = np.eye(4)

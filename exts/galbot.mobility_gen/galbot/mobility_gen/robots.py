@@ -24,7 +24,7 @@ from isaacsim.replicator.mobility_gen.impl.types import Pose2d
 from isaacsim.replicator.mobility_gen.impl.utils.global_utils import get_world
 
 from .swerve_controller import SwerveController
-from .pose_utils import aimed_world_camera_quat
+from .pose_utils import aimed_world_camera_quat, set_camera_horizontal_fov
 
 _GALBOT_WS = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 GALBOT_USD = os.environ.get(
@@ -52,13 +52,15 @@ def _load_arm_pose() -> dict:
         return {}
 
 
-def _load_wrist_view() -> tuple[float, float]:
+def _load_wrist_view() -> tuple[float, float, float]:
     try:
         cfg = _yaml.safe_load(open(os.path.join(_GALBOT_WS, "configs", "wrist_cameras.yaml")))
         view = cfg.get("navigation_view", {})
-        return float(view.get("pitch_deg", -10.0)), float(view.get("yaw_deg", 0.0))
+        return (float(view.get("pitch_deg", -10.0)),
+                float(view.get("yaw_deg", 0.0)),
+                float(view.get("horizontal_fov_deg", 70.0)))
     except Exception:
-        return -10.0, 0.0
+        return -10.0, 0.0, 70.0
 
 
 ARM_HOLD_POSE = {name: 0.0 for name in (
@@ -69,7 +71,7 @@ ARM_HOLD_POSE = {name: 0.0 for name in (
        "right_active_joint1", "right_active_joint2", "right_passive_joint"]
 )}
 ARM_HOLD_POSE.update(_load_arm_pose())
-WRIST_VIEW_PITCH_DEG, WRIST_VIEW_YAW_DEG = _load_wrist_view()
+WRIST_VIEW_PITCH_DEG, WRIST_VIEW_YAW_DEG, WRIST_HORIZONTAL_FOV_DEG = _load_wrist_view()
 
 
 
@@ -172,7 +174,9 @@ class GalbotS1Robot(MobilityGenRobot):
         for side, rel_path in self.WRIST_CAMERA_SPECS.items():
             path = f"{self.prim_path}/{rel_path}"
             UsdGeom.Camera.Define(stage, path)
-            self._wrist_pose_handles[side] = Camera(prim_path=path)
+            camera = Camera(prim_path=path)
+            set_camera_horizontal_fov(camera, WRIST_HORIZONTAL_FOV_DEG)
+            self._wrist_pose_handles[side] = camera
             mg_cam = MobilityGenCamera(path, self.wrist_camera_resolution)
             setattr(self, f"{side}_wrist_camera", mg_cam)
 

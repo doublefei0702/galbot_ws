@@ -36,8 +36,16 @@ def test_rotation_round_trip():
     assert abs(float(np.dot(quat, recovered))) > 1.0 - 1e-9  # q and -q are equivalent
 
 
+def test_horizontal_fov_to_focal_length():
+    aperture = 2.0955
+    focal = pose_utils.focal_length_for_horizontal_fov(aperture, 70.0)
+    recovered_fov = np.degrees(2.0 * np.arctan(aperture / (2.0 * focal)))
+    assert abs(recovered_fov - 70.0) < 1e-9
+
+
 if __name__ == "__main__":
     test_navigation_pitch()
     test_view_is_relative_to_base()
     test_rotation_round_trip()
+    test_horizontal_fov_to_focal_length()
     print("camera pose tests passed")
