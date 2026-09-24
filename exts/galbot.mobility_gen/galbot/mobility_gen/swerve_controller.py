@@ -32,10 +32,13 @@ class SwerveModuleGeometry:
 
 
 DEFAULT_MODULES = [
-    SwerveModuleGeometry("wheel_1_fr", +0.247, -0.247),
-    SwerveModuleGeometry("wheel_2_fl", +0.247, +0.247),
-    SwerveModuleGeometry("wheel_3_rr", -0.247, -0.247),
-    SwerveModuleGeometry("wheel_4_rl", -0.247, +0.247),
+    # Verified against the derived Isaac USD: at zero steering, a positive
+    # drive target advances the chassis along base +X.  Keep the physical
+    # calibration here and never compensate by rotating the published pose.
+    SwerveModuleGeometry("wheel_1_fr", +0.247, -0.247, drive_sign=+1.0),
+    SwerveModuleGeometry("wheel_2_fl", +0.247, +0.247, drive_sign=+1.0),
+    SwerveModuleGeometry("wheel_3_rr", -0.247, -0.247, drive_sign=+1.0),
+    SwerveModuleGeometry("wheel_4_rl", -0.247, +0.247, drive_sign=+1.0),
 ]
 
 

@@ -25,7 +25,7 @@
 | 双腕相机 | 640×480 RGB-D，臂姿决定位置，视线相对 base 对准 |
 | 独立同步采集 | RGB、深度、实际渲染内参、逐帧 OpenCV 位姿 |
 | MobilityGen | 机器人注册、键盘遥控、随机路径、录制和 replay |
-| 外部控制接口 | `[v, wz]` 速度指令 + 2D 位姿反馈，对接导航栈见 [docs/navigation.md](docs/navigation.md) |
+| 外部控制接口 | `[v, wz]` 速度指令 + 2D 位姿反馈；完整 ROS2 导航见相邻的 `../navigation` 与 `../sim_adapter` |
 
 ## 环境要求
 
@@ -120,6 +120,7 @@ MG_STEPS=2000 ISP scripts/test_mobility_gen_galbot.py \
 | 文档 | 内容 |
 |---|---|
 | [docs/navigation.md](docs/navigation.md) | 与导航栈对接：cmd_vel 接口、里程计反馈、目标点导航两条路径 |
+| [`../sim_adapter/docs/operation.md`](../sim_adapter/docs/operation.md) | 已实现的 ROS2 导航启动、RViz 选点和 Isaac 适配流程 |
 | [docs/architecture.md](docs/architecture.md) | 实现思路：资产派生、swerve 运动学、相机定向、扩展机制 |
 | [docs/workflows.md](docs/workflows.md) | 操作指南：资产准备、逐级验收、数据采集、MobilityGen、replay |
 | [docs/data_format.md](docs/data_format.md) | 输出数据格式与坐标约定 |

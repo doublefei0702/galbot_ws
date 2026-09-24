@@ -34,19 +34,19 @@ def approx(a, b, tol=1e-6):
 def test_straight():
     c = SwerveController(wheel_radius=R)
     out = c.forward(np.array([1.0, 0.0, 0.0]))
-    for steer, w in out:
+    for module_geometry, (steer, w) in zip(c.modules, out):
         assert approx(steer, 0.0, 1e-9), steer
-        assert approx(w, 1.0 / R), w
-    print("PASS 直行: 四轮转角=0, 轮速=1/0.08=12.5 rad/s")
+        assert approx(w, module_geometry.drive_sign / R), w
+    print("PASS 直行: 四轮转角=0, 物理驱动符号已标定")
 
 
 def test_backward():
     c = SwerveController(wheel_radius=R)
     out = c.forward(np.array([-1.0, 0.0, 0.0]))
-    for steer, w in out:
+    for module_geometry, (steer, w) in zip(c.modules, out):
         # 转向 180° + 正转速 == 倒退 (与 转向0 + 负转速 等价)
         assert approx(abs(steer), math.pi), steer
-        assert approx(w, 1.0 / R), w
+        assert approx(w, module_geometry.drive_sign / R), w
     print("PASS 后退: 转角=180°, 正转速滚动等效倒退")
 
 
@@ -57,7 +57,7 @@ def test_spin():
     for m, (steer, w) in zip(c.modules, out):
         expect = math.atan2(m.x, -m.y)
         assert approx(_norm(steer), _norm(expect), 1e-9), (m.name, steer, expect)
-        assert approx(w, 0.247 * math.sqrt(2) / R), w  # |v_i| = wz*sqrt(x²+y²)
+        assert approx(w, m.drive_sign * 0.247 * math.sqrt(2) / R), w
     print("PASS 原地旋转: 四轮切向, |v|=wz*0.349m")
 
 
@@ -73,7 +73,7 @@ def test_fixed_radius_turn():
         wx = vx - wz * m.y
         wy = wz * m.x
         assert approx(_norm(steer), _norm(math.atan2(wy, wx)), 1e-9)
-        assert approx(w, math.hypot(wx, wy) / R), w
+        assert approx(w, m.drive_sign * math.hypot(wx, wy) / R), w
     print("PASS 固定半径转弯: 满足 v_i = vx - wz*y_i 几何关系")
 
 
@@ -91,10 +91,10 @@ def test_flip_optimization():
     c = SwerveController(wheel_radius=R)
     cur = [0.0] * 4
     out = c.forward_with_state(np.array([-0.1, 0.0, 0.0]), cur)  # 要求 180°
-    for steer, w in out:
-        # 翻转后目标角接近 0 而不是 ±pi, 轮速为负
+    for module_geometry, (steer, w) in zip(c.modules, out):
+        # 翻转后目标角接近 0 而不是 ±pi, 物理轮速相对前进反号。
         assert abs(_norm(steer)) < 0.01, steer
-        assert w < 0
+        assert w * module_geometry.drive_sign < 0
     print("PASS 翻转优化: >90° 行程时翻转轮速")
 
 

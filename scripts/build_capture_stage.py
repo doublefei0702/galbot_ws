@@ -45,6 +45,13 @@ if t_op:
     t_op.Set(Gf.Vec3d(x, y, 0.05))
 else:
     robot.AddTranslateOp().Set(Gf.Vec3d(x, y, 0.05))
+r_op = robot.GetRotateXYZOp()
+if r_op:
+    r_op.Set(Gf.Vec3f(0.0, 0.0, theta_deg))
+else:
+    # Xform op order [translate, rotateXYZ] gives a local yaw followed by the
+    # requested world translation, so initial x/y are not rotated about origin.
+    robot.AddRotateXYZOp().Set(Gf.Vec3f(0.0, 0.0, theta_deg))
 
 stage.GetRootLayer().Save()
 print(f"已生成 {DST} 出生点=({x},{y},{theta_deg}°)")

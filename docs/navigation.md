@@ -1,8 +1,12 @@
 # 与导航栈对接
 
 面向把 GalbotS1 接入自己导航系统（ROS 2 Nav2、自研规划器等）的用户。
-本仓库**不包含 ROS 桥**：仿真侧的对接面是 Python API——导航系统把速度指令
-（cmd_vel 语义）写入 `robot.action`，从仿真读取位姿与传感器数据。
+
+> ROS2 导航现已作为独立工作区实现于相邻目录：
+> [`../../navigation`](../../navigation) 是可移植导航核心，
+> [`../../sim_adapter`](../../sim_adapter) 是 Isaac Sim/MobilityGen 适配层。
+> 请直接按其 [启动手册](../../sim_adapter/docs/operation.md) 操作；本页保留
+> `GalbotS1Robot` 的底层控制契约说明。
 
 ```text
 导航系统（规划/控制）                    仿真侧（本仓库）
@@ -46,11 +50,11 @@ while running:
     world.step(render=need_render)
 ```
 
-**ROS 桥的建议形态**：订阅 `/cmd_vel`，回调中只缓存 Twist；在物理步循环
-（或 Isaac Sim 的 physics callback）里把缓存的 `linear.x`/`angular.z` 写入
-`robot.action` 并调用 `write_action`。这样指令频率与物理节拍解耦，避免
-回调时序问题。Isaac Sim 自带 ROS 2 桥扩展可用于话题搬运，但尚未集成进
-本仓库——上述 action 接口就是预留的接入点。
+**ROS 桥的实现形态**：相邻 `sim_adapter` 的
+`ROS2NavigationScenario` 订阅 `/cmd_vel`，在每个物理步把
+`linear.x`/`angular.z` 写入 `robot.action` 并调用 `write_action`。这样指令
+频率与物理节拍解耦，避免回调时序问题；它还发布 `/clock`、`/map`、`/odom`
+和 `map → odom → base_link`。上述 action 接口仍是底层唯一控制入口。
 
 GUI 模式下 `KeyboardTeleoperation` 场景即用同一接口：按键映射成
 `[±keyboard_linear_velocity_gain, ±keyboard_angular_velocity_gain]` 后
@@ -63,9 +67,9 @@ GUI 模式下 `KeyboardTeleoperation` 场景即用同一接口：按键映射成
   非轮式里程计。坐标约定 +x 前、+y 左、θ 绕 +z 逆时针为正（REP-103）。
 - `robot.update_state()` 刷新内部 Buffer：`position`、`orientation`
   （scalar-first 四元数）、`joint_positions`、`joint_velocities`。
-- **注意**：当前实现中 `linear_velocity`/`angular_velocity` 两个 Buffer 固定
-  写零。需要速度反馈时对 `get_pose_2d()` 差分，或直接从
-  `robot.articulation_view` 读取刚体速度。
+- `linear_velocity`/`angular_velocity`：来自 PhysX articulation 的世界坐标
+  真值速度；物理尚未初始化的极短窗口回退为零。独立 ROS2 适配层将其转换为
+  `base_link` 语义的里程计 Twist，并同时用位姿差分兜底。
 - 腕部相机逐帧世界位姿（OpenCV optical 约定）与 RGB-D 可作为视觉导航
   输入；相机视野在 Build 后约 2 s（双臂稳定）才完成定向。
 
