@@ -1,0 +1,91 @@
+# Larger opt-in candidate. Complete freestanding obstacles near x=6..8,
+# x=9..13 and x=24..26 are inside it, with a passable route around the east one.
+schema_version: 1
+status: candidate
+source_usd: /root/gpufree-data/data_usd/scene_with_collision.usdz
+source_map: /root/gpufree-data/data_usd/map_0_1.yaml
+source_nav_config: /root/gpufree-data/navigation/src/galbot_navigation_bringup/config/navigation.yaml
+initial_pose_world: [9.0, 0.0, 0.0]
+boundary_probe_start_world: [28.25, -3.5, 0.0]
+boundary_probe_command_body: [20.0, 0.0, 0.0]
+workspace_polygon_world:
+  - [2.0, -2.5]
+  - [4.5, -2.5]
+  - [4.5, -6.4]
+  - [8.8, -6.4]
+  - [8.8, -7.4]
+  - [13.6, -7.4]
+  - [13.6, -3.0]
+  - [22.0, -3.0]
+  - [22.0, -9.5]
+  - [29.0, -9.5]
+  - [29.0, -2.5]
+  - [25.0, -2.5]
+  - [25.0, -0.5]
+  - [14.0, -0.5]
+  - [14.0, 4.0]
+  - [2.0, 4.0]
+exclude_polygons_world: []
+ground_z_m: -0.19
+footprint_radius_m: 0.50
+safety_margin_m: 0.20
+camera_height_m: 0.63
+camera_height_tolerance_m: 0.10
+camera_pitch_deg: -10.0
+camera_yaw_deg: 0.0
+camera_pitch_tolerance_deg: 10.0
+camera_yaw_tolerance_deg: 10.0
+max_initial_arm_error_rad: 0.25
+initialize_held_joints: true
+camera_horizontal_fov_deg: 70.0
+depth_min_m: 0.10
+depth_max_m: 40.0  # 25 m clipped real mesh returns; 80 m recovered almost no more
+max_invalid_depth_fraction: 0.03
+min_usable_frame_fraction: 0.50
+poor_frame_action: skip
+map_crop_padding_m: 1.0
+map_sampling_z_m: [-0.085, 1.415]
+validation_views:
+  wall_surface_check:
+    position_world: [9.0, 0.0, 1.015]
+    target_world: [9.0, -4.0, 0.8]
+  floor_surface_check:
+    position_world: [9.0, 0.0, 1.015]
+    target_world: [10.5, -0.5, -0.185]
+  normal_corridor:
+    position_world: [9.0, 0.0, 1.015]
+    target_world: [11.5, 0.0, 0.8]
+  workspace_edge:
+    position_world: [20.0, 0.0, 1.015]
+    target_world: [26.0, 0.0, 0.5]
+  west_obstacle:
+    position_world: [7.0, -1.5, 0.445]
+    target_world: [7.0, -5.0, -0.2]
+  central_obstacle:
+    position_world: [11.0, -1.5, 0.445]
+    target_world: [11.0, -5.0, -0.2]
+  east_obstacle:
+    position_world: [23.0, -7.0, 0.44]
+    target_world: [26.0, -7.0, 0.1]
+  east_obstacle_aimed:
+    position_world: [23.0, -7.0, 0.44]
+    target_world: [26.0, -7.0, -0.80]
+# Local collision supports are below the scanned floor and do not render.
+# Their top is -0.24 m, roughly 5 cm below the local floor median.
+repairs:
+  - name: MainAisleCollisionFloorSupport
+    purpose: support_robot_below_scanned_floor_in_main_aisle
+    kind: floor
+    center_world: [12.0, -2.0, -0.30]
+    size_m: [20.0, 12.0, 0.12]
+    color_rgb: [0.25, 0.25, 0.25]
+    collision: true
+    render: false
+  - name: EastObstacleCollisionFloorSupport
+    purpose: support_robot_below_scanned_floor_around_east_obstacle
+    kind: floor
+    center_world: [25.5, -5.0, -0.30]
+    size_m: [7.0, 9.0, 0.12]
+    color_rgb: [0.25, 0.25, 0.25]
+    collision: true
+    render: false

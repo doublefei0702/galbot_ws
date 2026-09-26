@@ -115,6 +115,56 @@ MG_STEPS=2000 ISP scripts/test_mobility_gen_galbot.py \
 底盘、相机等逐级验收脚本和数据采集属于进阶流程，不是运行前置条件，
 需要时见 [docs/workflows.md](docs/workflows.md#2-逐级验收可选)。
 
+### 无头自动 RGB-D 采集（推荐）
+
+`capture_auto_rgbd.py` 是独立的无头采集入口：它复用当前 `GalbotS1Robot` 的
+`cmd_vel → PlanarBaseController → Articulation` 理想底盘后端，不直接设置路径点
+或底盘坐标。默认 `internal` 模式会从占据图采样可达目标、A* 规划并沿扫掠路径
+检查碰撞；接入导航栈时可用 `cmd_vel` 模式，二者互斥。
+
+```bash
+cd "$GALBOT_WORKSPACE"
+ISP scripts/capture_auto_rgbd.py \
+  --scene /path/to/scene.usd \
+  --map /path/to/map.yaml \
+  --output "$GALBOT_WORKSPACE/outputs/galbot_rgbd" \
+  --seed 7 --episodes 2 --frames 40 --sample-rate 5 \
+  --headless --motion-source internal \
+  --ext-folder "$GALBOT_WORKSPACE/exts" \
+  --enable galbot.mobility_gen \
+  --enable isaacsim.replicator.mobility_gen.examples
+```
+
+先做确定性 smoke test（只写 20 帧，不覆盖已有目录）：
+
+```bash
+ISP scripts/capture_auto_rgbd.py --scene /path/to/scene.usd \
+  --map /path/to/map.yaml --output "$GALBOT_WORKSPACE/outputs/galbot_smoke" \
+  --seed 7 --smoke --headless \
+  --ext-folder "$GALBOT_WORKSPACE/exts" \
+  --enable galbot.mobility_gen \
+  --enable isaacsim.replicator.mobility_gen.examples
+```
+
+每个 episode 输出左右腕部 `rgb/*.png`、米制 float32 `depth_raw/*.npy`、
+`depth_valid_mask/*.png`、毫米 uint16 `depth/*.png`、`camera_info.json`、
+`pose.txt` 和逐帧 `manifest.jsonl`；根目录
+有 `validation_report.json`。正式采集使用持久化输出目录；已有非空目录不会被覆盖，
+脚本会自动创建带时间戳的子目录，需要复用固定目录时才加 `--overwrite`。完整输出字段和 `cmd_vel` profile 接法见
+[docs/workflows.md](docs/workflows.md#3-无头自动-rgb-d-采集) 与
+[docs/data_format.md](docs/data_format.md#无头自动-rgb-d-输出)。
+当前扫描工厂场景的作业区、无头长序列和质量限制见
+[docs/scene_with_collision_expanded.md](docs/scene_with_collision_expanded.md)。
+
+轨迹可视化：
+
+```bash
+python3 scripts/plot_trajectory.py \
+  --input "$GALBOT_WORKSPACE/outputs/full_warehouse_smoke_20260924" \
+  --map /root/gpufree-data/data_usd/map_test.yaml \
+  --output "$GALBOT_WORKSPACE/outputs/full_warehouse_smoke_20260924/trajectory.png"
+```
+
 ## 文档索引
 
 | 文档 | 内容 |
@@ -124,5 +174,6 @@ MG_STEPS=2000 ISP scripts/test_mobility_gen_galbot.py \
 | [docs/architecture.md](docs/architecture.md) | 实现思路：资产派生、swerve 运动学、相机定向、扩展机制 |
 | [docs/workflows.md](docs/workflows.md) | 操作指南：资产准备、逐级验收、数据采集、MobilityGen、replay |
 | [docs/data_format.md](docs/data_format.md) | 输出数据格式与坐标约定 |
+| [docs/scene_with_collision_expanded.md](docs/scene_with_collision_expanded.md) | 扫描工厂场景的局部地图、连续 RGB-D 采集与已验证范围 |
 | [docs/configuration.md](docs/configuration.md) | 配置文件说明、场景与路径自定义方法 |
 | [docs/faq.md](docs/faq.md) | 常见问题与已知限制 |

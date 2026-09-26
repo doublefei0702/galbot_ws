@@ -1,0 +1,55 @@
+# Conservative candidate based on dense, nearly level collision-mesh floor.
+# Opt in explicitly; the scanned area has no established robot start or routes.
+schema_version: 1
+status: candidate
+source_usd: /root/gpufree-data/data_usd/scene_with_collision.usdz
+source_map: /root/gpufree-data/data_usd/map_0_1.yaml
+source_nav_config: /root/gpufree-data/navigation/src/galbot_navigation_bringup/config/navigation.yaml
+initial_pose_world: [9.0, 0.0, 0.0]
+boundary_probe_start_world: [11.25, 0.0, 0.0]
+boundary_probe_command_body: [20.0, 0.0, 0.0]
+workspace_polygon_world:
+  - [7.0, -2.0]
+  - [12.0, -2.0]
+  - [12.0, 2.0]
+  - [7.0, 2.0]
+exclude_polygons_world: []
+ground_z_m: -0.185
+footprint_radius_m: 0.50
+safety_margin_m: 0.20
+camera_height_m: 0.63  # measured nominal wrist height above local ground with held joints initialized
+camera_height_tolerance_m: 0.10
+initialize_held_joints: true  # set the existing nav arm pose before physics steps
+camera_horizontal_fov_deg: 70.0
+depth_min_m: 0.10
+depth_max_m: 25.0
+max_invalid_depth_fraction: 0.35
+poor_frame_action: mark  # mark or skip
+map_crop_padding_m: 1.0
+map_sampling_z_m: [-0.085, 1.415]  # intended Occupancy Map tool slice
+# Diagnostic views. Wall/floor defects are hypotheses pending same-pose render.
+validation_views:
+  wall_surface_check:
+    position_world: [9.0, 0.0, 1.015]
+    target_world: [9.0, -4.0, 0.8]
+  floor_surface_check:
+    position_world: [9.0, 0.0, 1.015]
+    target_world: [10.5, -0.5, -0.185]
+  normal_corridor:
+    position_world: [9.0, 0.0, 1.015]
+    target_world: [11.5, 0.0, 0.8]
+  workspace_edge:
+    position_world: [11.0, 1.0, 1.015]
+    target_world: [13.0, 1.0, 0.8]
+# The scan floor renders, but the robot sank during the first physics run.
+# Its top is -0.215 m, below the measured floor range [-0.204, -0.168] m.
+# This local proxy supports physics only; it cannot fill depth pixels.
+repairs:
+  - name: LocalCollisionFloorSupport
+    purpose: support_robot_under_scanned_floor_without_changing_rgbd
+    kind: floor
+    center_world: [9.5, 0.0, -0.275]
+    size_m: [5.0, 4.0, 0.12]
+    color_rgb: [0.25, 0.25, 0.25]
+    collision: true
+    render: false

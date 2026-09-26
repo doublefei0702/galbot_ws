@@ -140,10 +140,15 @@ class GalbotS1Robot(MobilityGenRobot):
         self._wrist_pose_handles = {}
         self._wrist_aim_steps = 0
         self._wrist_aimed = False
+        self.wrist_view_pitch_deg = WRIST_VIEW_PITCH_DEG
+        self.wrist_view_yaw_deg = WRIST_VIEW_YAW_DEG
         self._follow_viewport = os.environ.get("GALBOT_FOLLOW_VIEWPORT", "1").lower() in {
             "1", "true", "yes"}
         self._follow_viewport_steps = 0
         self._command_pose = None
+        # Optional local-area gate, installed by the opt-in collector or ROS profile.
+        self.motion_guard = None
+        self.last_motion_block_reason = None
 
     # ---------------- 生命周期 ----------------
 
@@ -195,12 +200,23 @@ class GalbotS1Robot(MobilityGenRobot):
         for side, rel_path in self.WRIST_CAMERA_SPECS.items():
             path = f"{self.prim_path}/{rel_path}"
             UsdGeom.Camera.Define(stage, path)
-            camera = Camera(prim_path=path)
+            camera = Camera(prim_path=path, resolution=self.wrist_camera_resolution)
             set_camera_horizontal_fov(camera, WRIST_HORIZONTAL_FOV_DEG)
             self._wrist_pose_handles[side] = camera
 
             class _WristCamera(MobilityGenCamera):
                 """MobilityGen camera that tolerates annotators before frame one."""
+
+                def enable_depth_rendering(self):
+                    # MobilityGen's default is distance_to_camera (radial range).
+                    # The RGB-D protocol and pinhole backprojection require Z depth.
+                    if self._render_product is None:
+                        self.enable_rendering()
+                    if self._depth_annotator is None:
+                        import omni.replicator.core as rep
+                        self._depth_annotator = rep.AnnotatorRegistry.get_annotator(
+                            "distance_to_image_plane")
+                        self._depth_annotator.attach(self._render_product)
 
                 def update_state(self):
                     if self._rgb_annotator is not None:
@@ -241,7 +257,7 @@ class GalbotS1Robot(MobilityGenRobot):
             return
         _, base_q = self.articulation_view.get_world_poses()
         aim_q = aimed_world_camera_quat(
-            np.asarray(base_q).reshape(-1, 4)[0], WRIST_VIEW_PITCH_DEG, WRIST_VIEW_YAW_DEG)
+            np.asarray(base_q).reshape(-1, 4)[0], self.wrist_view_pitch_deg, self.wrist_view_yaw_deg)
         for camera in self._wrist_pose_handles.values():
             camera.set_world_pose(orientation=aim_q, camera_axes="world")
         self._wrist_aimed = True
@@ -270,8 +286,18 @@ class GalbotS1Robot(MobilityGenRobot):
         if self._command_pose is None:
             self._command_pose = self._physical_pose_2d()
         pose = self._command_pose
+        command = np.asarray(self.action.get_value(), dtype=float)
+        self.last_motion_block_reason = None
+        if self.motion_guard is not None:
+            reason = self.motion_guard(pose, command, step_size)
+            if reason is not None:
+                self.last_motion_block_reason = reason
+                self.action.set_value(np.zeros(3, dtype=float))
+                self.articulation_view.set_velocities(np.zeros((1, 6), dtype=np.float32))
+                self.articulation_view.set_joint_position_targets(self._hold_targets, joint_indices=self._idx_hold)
+                return
         x, y, yaw = self.controller.integrate(
-            pose.x, pose.y, pose.theta, np.asarray(self.action.get_value()), step_size)
+            pose.x, pose.y, pose.theta, command, step_size)
         self._command_pose = Pose2d(x=x, y=y, theta=yaw)
         p, q = self.articulation_view.get_world_poses()
         position = np.asarray(p).reshape(-1, 3)[0].copy()
@@ -340,7 +366,7 @@ class GalbotS1Robot(MobilityGenRobot):
         # Camera 的动态定向不属于关节状态，必须在 replay 中显式恢复；否则图像
         # 使用默认 USD Camera 朝向，而 common state 中仍是录制时的相机位姿。
         aim_q = aimed_world_camera_quat(
-            orientation, WRIST_VIEW_PITCH_DEG, WRIST_VIEW_YAW_DEG)
+            orientation, self.wrist_view_pitch_deg, self.wrist_view_yaw_deg)
         for camera in self._wrist_pose_handles.values():
             camera.set_world_pose(orientation=aim_q, camera_axes="world")
         self._wrist_aimed = True

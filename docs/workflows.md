@@ -84,7 +84,58 @@ ISP scripts/test_wrist_cameras.py
 存在有效值、两路俯角接近、`K` 的主点接近图像中心、pose 为合法 4×4
 `world_from_camera_opencv` 刚体变换。
 
-## 3. 数据采集
+## 3. 无头自动 RGB-D 采集
+
+正式采集使用 `scripts/capture_auto_rgbd.py`。当前仓库优先采用独立 runner：
+它复用已经验证的理想悬浮底盘和双腕相机，不依赖 GUI、键盘或 ROS 墙钟定时器。
+MobilityGen 仍可用于录制/replay，但不作为自动采集的额外速度源，避免和
+`cmd_vel` 竞争。
+
+```bash
+ISP scripts/capture_auto_rgbd.py \
+  --scene /path/to/scene.usd --map /path/to/map.yaml \
+  --output "$GALBOT_WORKSPACE/outputs/galbot_rgbd" --seed 7 \
+  --episodes 2 --frames 40 --sample-rate 5 \
+  --headless --motion-source internal \
+  --ext-folder "$GALBOT_WORKSPACE/exts" \
+  --enable galbot.mobility_gen \
+  --enable isaacsim.replicator.mobility_gen.examples
+```
+
+流程是：零速渲染预热 → 采样自由空间目标 → A* 路径 → 路径跟踪输出速度 →
+扫掠碰撞检查 → 物理步/渲染/状态同步 → 同一仿真时刻读取左右相机 → 写盘。
+episode 之间显式 reset，并在 `validation_report.json` 中分段记录。地图中的
+未知和占据栅格都视为不可通行，障碍按 `--collision-radius` 膨胀；没有有效地图
+时不应把运行结果称为正式避障采集。
+
+确定性 smoke test：
+
+```bash
+ISP scripts/capture_auto_rgbd.py --scene /path/to/scene.usd \
+  --map /path/to/map.yaml --output "$GALBOT_WORKSPACE/outputs/galbot_smoke" \
+  --seed 7 --smoke --headless \
+  --ext-folder "$GALBOT_WORKSPACE/exts" \
+  --enable galbot.mobility_gen \
+  --enable isaacsim.replicator.mobility_gen.examples
+```
+
+如需复用导航栈的同一 `cmd_vel` 后端，提供已验证的 scene profile：
+
+```bash
+ISP scripts/capture_auto_rgbd.py \
+  --scene /path/to/scene.usd --map /path/to/map.yaml \
+  --profile /path/to/profile.yaml --motion-source cmd_vel \
+  --output "$GALBOT_WORKSPACE/outputs/galbot_cmdvel" --episodes 1 --frames 40 --sample-rate 5 \
+  --ext-folder "$GALBOT_WORKSPACE/exts" \
+  --enable galbot.mobility_gen \
+  --enable isaacsim.replicator.mobility_gen.examples
+```
+
+`cmd_vel` 模式只消费 profile/导航链路产生的速度，内部随机规划器关闭；导航同学
+可将自己的控制器接到现有 `/cmd_vel` 发布端，不需要改动采集器或底盘积分器。
+输出目录默认禁止覆盖已有数据。
+
+## 4. 传统固定动作采集
 
 ```bash
 ISP scripts/capture_wrist_dataset.py --motion straight --frames 40 --speed 0.25
@@ -101,9 +152,9 @@ ISP scripts/capture_wrist_dataset.py --motion straight --frames 40 --speed 0.25
 行驶中每 12 个物理步采 1 帧（约 5 Hz），帧内顺序为物理推进 → 渲染 → 同帧读取
 RGB/深度/位姿 → 写盘。输出结构见 [data_format.md](data_format.md#独立采集输出)。
 
-## 4. MobilityGen
+## 5. MobilityGen
 
-### 4.1 无头集成测试
+### 5.1 无头集成测试
 
 ```bash
 MG_STEPS=2000 ISP scripts/test_mobility_gen_galbot.py \
@@ -116,7 +167,7 @@ reader 读取。录制写入 `~/MobilityGenData/recordings/galbot_s1_headless_te
 （固定测试目录，可删除重建，不要与正式时间戳录制混用）。步数太少时里程
 不足会触发断言失败。
 
-### 4.2 GUI 键盘遥控和录制
+### 5.2 GUI 键盘遥控和录制
 
 ```bash
 cd "$ISAAC_SIM"
@@ -134,7 +185,7 @@ cd "$ISAAC_SIM"
 6. `W/S` 前后移动，`A/D` 原地转向；
 7. 点击 **Record** 开始录制，正式录制使用时间戳目录。
 
-### 4.3 Replay 渲染
+### 5.3 Replay 渲染
 
 `replay_directory.py` 的 `--input` 必须指向**包含一个或多个录制目录的父
 目录**，不能直接指向某一次录制——否则脚本会把录制内部的 `occupancy_map/`、
@@ -158,7 +209,7 @@ cd "$ISAAC_SIM"
 本扩展保存的 stage 使用绝对资产路径，录制通过软链接或其他目录 replay 均
 有效。replay 输出的深度 PNG 仅供快速查看，不能替代原始浮点深度。
 
-## 5. 常用命令速查
+## 6. 常用命令速查
 
 ```bash
 # 离线测试
